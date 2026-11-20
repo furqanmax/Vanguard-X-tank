@@ -1,0 +1,15 @@
+{
+  "name": "Saltreach — Vanguard X",
+  "short_name": "Vanguard X",
+  "description": "Fast arcade vehicle combat. Co-op and versus ready.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0b1118",
+  "theme_color": "#0b1118",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

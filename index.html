@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Saltreach — Vanguard X</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <meta name="theme-color" content="#0b1118">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three/three.module.js" } }
+  </script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud" class="hidden">
+    <div id="cockpit" class="hidden"></div>
+    <button id="pause-btn" class="pause-btn" aria-label="Pause">II</button>
+    <div id="legend" class="legend hidden"></div>
+    <div id="lock-hint" class="hidden">Click the view to capture the mouse</div>
+
+    <div class="panel hud-panel hud-tl">
+      <div class="label">MISSION</div>
+      <div id="hud-mission" class="mission"></div>
+      <div class="label">OBJECTIVE</div>
+      <div id="hud-objective" class="objective"></div>
+    </div>
+
+    <div class="panel hud-panel hud-tr">
+      <canvas id="minimap" width="200" height="200"></canvas>
+      <div class="stat"><span>SCORE</span><b id="hud-score">0</b></div>
+      <div class="stat"><span>TIME</span><b id="hud-time">00:00</b></div>
+    </div>
+
+    <div id="target-window" class="panel hud-panel hidden">
+      <div class="label">TARGET</div>
+      <div id="target-name">—</div>
+      <div class="bar"><div id="target-hp"></div></div>
+    </div>
+
+    <div id="reticle" class="reticle idle"><i></i><i></i><i></i><i></i></div>
+
+    <div id="compass" class="compass hidden">
+      <div id="compass-arrow">▲</div>
+      <span id="compass-dist"></span>
+    </div>
+
+    <div class="panel hud-panel hud-bl">
+      <div class="row"><span class="label">ARMOR</span><b><span id="hud-health">100</span>%</b></div>
+      <div class="bar big"><div id="hud-health-bar"></div></div>
+      <div class="row"><span class="label">NANO</span><span id="hud-nano"></span></div>
+      <div class="row"><span class="label">SPEED</span><b id="hud-speed">0</b><span>km/h</span></div>
+      <div class="modes">
+        <span class="mode active">TRACK</span>
+        <span class="mode">AMPHIB</span>
+        <span class="mode">HOVER</span>
+        <span class="mode">SUB</span>
+      </div>
+    </div>
+
+    <div id="weapons" class="weapons hud-panel"></div>
+    <div id="powers" class="powers hud-panel"></div>
+    <div class="panel hud-panel hud-special">
+      <div class="label" id="special-label">SPECIAL [X]</div>
+      <div class="bar big"><div id="special-bar"></div></div>
+    </div>
+    <div id="countdown" class="countdown hidden"></div>
+    <div id="banner" class="banner hidden"></div>
+    <div id="messages" class="messages"></div>
+    <div id="damage" class="damage"></div>
+
+    <div id="objectives-panel" class="panel center hidden">
+      <div class="label">OBJECTIVES  (O to close)</div>
+      <ol id="objective-list"></ol>
+    </div>
+    <div id="briefing-panel" class="panel center hidden">
+      <div class="label">BRIEFING  (R to close)</div>
+      <p id="briefing-text"></p>
+    </div>
+
+    <div id="scoreboard" class="panel hud-panel center hidden">
+      <div class="label">SCOREBOARD  (hold TAB)</div>
+      <table class="keys stats" id="sb-table"></table>
+    </div>
+
+    <div id="tactical" class="hidden">
+      <canvas id="tactical-canvas" width="720" height="720"></canvas>
+      <div class="label">TACTICAL MAP  (M to close)</div>
+    </div>
+  </div>
+
+  <div id="touch" class="hidden">
+    <div class="tpos" id="pos-drive">
+      <div id="stick"><div id="stick-knob"></div><span class="tag">DRIVE</span></div>
+    </div>
+    <div class="tpos" id="pos-aim">
+      <div id="aim-stick"><div id="aim-ring"></div><div id="aim-knob"></div><span class="tag">AIM · PULL TO FIRE</span></div>
+      <div id="aim-pad"><span class="tag">DRAG TO AIM · HOLD TO FIRE</span></div>
+    </div>
+    <div id="weapon-pick" class="weapon-pick hidden"></div>
+    <div class="tpos" id="pos-buttons">
+      <div class="tbtns">
+        <button id="btn-help">?</button>
+        <button id="btn-nano">NANO</button>
+        <button id="btn-special">EMP</button>
+        <button id="btn-weapon">SWAP</button>
+        <button id="btn-alt">ALT</button>
+      </div>
+    </div>
+  </div>
+  <div id="layout-bar" class="hidden">
+    <span>Drag each control to a new place</span>
+    <button data-action="layout-reset">Reset</button>
+    <button class="primary" data-action="layout-done">Done</button>
+  </div>
+
+  <div id="screens" class="hidden">
+    <section class="screen hidden" data-screen="title">
+      <div class="card">
+        <div class="kicker">SALTREACH SECTOR // 2031</div>
+        <h1>VANGUARD X</h1>
+        <p class="tagline">Remote armor. Independent turret. One island to clear.</p>
+        <nav class="menu">
+          <button data-action="new-game">New Mission</button>
+          <button data-action="mp-menu">Multiplayer</button>
+          <button data-action="fullscreen">Toggle Fullscreen</button>
+          <button data-action="options">Options</button>
+          <button data-action="controls">Controls</button>
+          <button data-action="credits">Credits</button>
+        </nav>
+      </div>
+    </section>
+
+    <section class="screen hidden" data-screen="briefing">
+      <div class="card">
+        <div class="kicker" id="brief-sub"></div>
+        <h2 id="brief-name"></h2>
+        <p id="brief-text"></p>
+        <div class="row-btns">
+          <button data-action="back">Abort</button>
+          <button class="primary" data-action="deploy">Deploy</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen hidden" data-screen="pause">
+      <div class="card">
+        <h2>PAUSED</h2>
+        <nav class="menu">
+          <button class="primary" data-action="resume">Resume</button>
+          <button data-action="options">Controls settings</button>
+          <button data-action="controls">Control help</button>
+          <button data-action="quit">Quit game</button>
+        </nav>
+      </div>
+    </section>
+
+    <section class="screen hidden" data-screen="options">
+      <div class="card">
+        <h2>OPTIONS</h2>
+        <div class="field">
+          <label>Mouse sensitivity <span id="opt-sens-val"></span></label>
+          <input type="range" min="0.4" max="2.5" step="0.1" data-setting="sensitivity">
+        </div>
+        <div class="field">
+          <label><input type="checkbox" data-setting="invertY"> Invert vertical aim</label>
+        </div>
+        <div class="field">
+          <label><input type="checkbox" data-setting="fullscreen"> Fullscreen</label>
+        </div>
+        <div class="field">
+          <label><input type="checkbox" data-setting="autoFire"> Auto-fire when the reticle is on an enemy</label>
+        </div>
+        <div class="field">
+          <label>Aim control (touch)</label>
+          <select data-setting="aimStyle">
+            <option value="stick">Joystick: push to aim, pull to fire</option>
+            <option value="drag">Drag pad: drag to aim, hold to fire</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Control layout (touch)</label>
+          <select data-setting="controlPreset">
+            <option value="default">Default (right-handed)</option>
+            <option value="left">Left-handed</option>
+            <option value="compact">Compact (thumb reach)</option>
+          </select>
+        </div>
+        <div class="row-btns" data-touch-only>
+          <button data-action="edit-touch">Edit touch control positions</button>
+        </div>
+        <div class="field">
+          <label>Graphics quality (visual only)</label>
+          <select data-setting="quality">
+            <option value="low">Low: no shadows, fewer effects</option>
+            <option value="medium">Medium: soft shadows</option>
+            <option value="high">High: full detail</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Weapon icon style</label>
+          <select data-setting="iconSet">
+            <option value="flat">Flat</option>
+            <option value="outline">Outline</option>
+            <option value="pixel">Pixel</option>
+            <option value="military">Military (olive)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Difficulty</label>
+          <select data-setting="difficulty">
+            <option value="easy">Easy</option>
+            <option value="normal">Normal</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+        <div class="row-btns"><button data-action="back">Back</button></div>
+      </div>
+    </section>
+
+    <section class="screen hidden" data-screen="controls">
+      <div class="card wide">
+        <h2>CONTROLS</h2>
+        <table class="keys">
+          <tr><td>W / S, Up / Down</td><td>Throttle and reverse</td></tr>
+          <tr><td>A / D, Left / Right</td><td>Turn hull</td></tr>
+          <tr><td>Mouse (click view to capture)</td><td>Aim turret and barrel</td></tr>
+          <tr><td>Left button</td><td>Fire primary (RFPG / ERFPG)</td></tr>
+          <tr><td>Right button</td><td>Fire bound advanced weapon</td></tr>
+          <tr><td>1</td><td>Primary; press again to toggle RFPG / ERFPG</td></tr>
+          <tr><td>2 / 3</td><td>Select Mortar / Napalm (binds right button)</td></tr>
+          <tr><td>C</td><td>Center turret on hull</td></tr>
+          <tr><td>\</td><td>Center hull on turret</td></tr>
+          <tr><td>H</td><td>Use nano-canister</td></tr>
+          <tr><td>Q / E, mouse wheel</td><td>Switch weapon</td></tr>
+          <tr><td>X</td><td>Special (EMP pulse, when charged)</td></tr>
+          <tr><td>V</td><td>Toggle third / first person</td></tr>
+          <tr><td>M / O / R</td><td>Tactical map / objectives / briefing</td></tr>
+          <tr><td>F5 / F6</td><td>Toggle HUD / cockpit frame</td></tr>
+          <tr><td>Esc</td><td>Pause</td></tr>
+        </table>
+        <div class="row-btns"><button data-action="back">Back</button></div>
+      </div>
+    </section>
+
+    <section class="screen hidden" data-screen="mp">
+      <div class="card">
+        <div class="kicker">ONLINE</div>
+        <h2>MULTIPLAYER</h2>
+        <div class="field">
+          <label>Callsign</label>
+          <input id="mp-name" type="text" maxlength="14" value="Pilot" class="text">
+        </div>
+        <div class="field">
+          <label>Room code (to join)</label>
+          <input id="mp-code" type="text" maxlength="4" placeholder="ABCD" class="text upper">
+        </div>
+        <p class="err" id="mp-error"></p>
+        <nav class="menu">
+          <button class="primary" data-action="mp-create">Create Versus Room</button>
+          <button data-action="mp-join">Join Room</button>
+        </nav>
+        <div class="row-btns"><button data-action="back">Back</button></div>
+      </div>
+    </section>
+
+    <section class="screen hidden" data-screen="lobby">
+      <div class="card">
+        <div class="kicker">LOBBY</div>
+        <h2>Room <span id="lobby-code">----</span></h2>
+        <p id="lobby-mode">Mode: Versus — first to 15 kills</p>
+        <ul class="roster" id="lobby-roster"></ul>
+        <p class="err" id="lobby-error"></p>
+        <div class="row-btns">
+          <button data-action="mp-leave">Leave</button>
+          <button class="primary hidden" id="lobby-start" data-action="mp-start">Start Match</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen hidden" data-screen="vsresult">
+      <div class="card">
+        <div class="kicker">MATCH OVER</div>
+        <h2>Versus Results</h2>
+        <table class="keys stats" id="vs-rows"></table>
+        <div class="row-btns"><button class="primary" data-action="menu">Back to Menu</button></div>
+      </div>
+    </section>
+
+    <section class="screen hidden" data-screen="credits">
+      <div class="card">
+        <h2>CREDITS</h2>
+        <p>An original arcade vehicle-combat homage built with Three.js. All names, models, textures, and levels are original.</p>
+        <div class="row-btns"><button data-action="back">Back</button></div>
+      </div>
+    </section>
+
+    <section class="screen hidden" data-screen="complete">
+      <div class="card">
+        <div class="kicker">EXTRACTION CONFIRMED</div>
+        <h2>MISSION COMPLETE</h2>
+        <table class="keys stats">
+          <tr><td>Time</td><td id="stat-time"></td></tr>
+          <tr><td>Enemies destroyed</td><td id="stat-enemies"></td></tr>
+          <tr><td>Objects destroyed</td><td id="stat-objects"></td></tr>
+          <tr><td>Accuracy</td><td id="stat-accuracy"></td></tr>
+          <tr><td>Pickups collected</td><td id="stat-pickups"></td></tr>
+          <tr><td>Score</td><td id="stat-score"></td></tr>
+        </table>
+        <div class="row-btns">
+          <button data-action="menu">Menu</button>
+          <button class="primary" data-action="replay">Replay</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen hidden" data-screen="gameover">
+      <div class="card">
+        <div class="kicker">MISSION FAILED</div>
+        <h2>GAME OVER</h2>
+        <p id="fail-reason"></p>
+        <div class="row-btns">
+          <button data-action="menu">Menu</button>
+          <button class="primary" data-action="retry">Retry</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="vendor/peerjs/peerjs.min.js"></script>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
