@@ -118,8 +118,15 @@ export class Vanguard {
     if (!this.alive) return;
     const keyThrottle = (input.isDown('KeyW') || input.isDown('ArrowUp') ? 1 : 0) - (input.isDown('KeyS') || input.isDown('ArrowDown') ? 1 : 0);
     const keySteer = (input.isDown('KeyA') || input.isDown('ArrowLeft') ? 1 : 0) - (input.isDown('KeyD') || input.isDown('ArrowRight') ? 1 : 0);
-    const throttleTarget = input.drive ? input.drive.throttle : keyThrottle;
+    let throttleTarget = input.drive ? input.drive.throttle : keyThrottle;
     const steerTarget = input.drive ? input.drive.steer : keySteer;
+    // Touch: pushing the stick sideways to turn has no vertical component, so
+    // raw throttle would be 0 and the tank would just pivot on the spot. Keep
+    // driving while steering instead — hold at least a gentle forward throttle
+    // (or the current speed if already faster) so turning keeps its momentum.
+    if (input.drive && Math.abs(steerTarget) > 0.05 && throttleTarget > -0.15 && throttleTarget < 0.5) {
+      throttleTarget = Math.max(0.4, this.speed / MAX_SPEED);
+    }
     this.throttleIn = approach(this.throttleIn, throttleTarget, THROTTLE_SMOOTH * dt);
     this.steerIn = approach(this.steerIn, steerTarget, STEER_SMOOTH * dt);
 
@@ -238,7 +245,7 @@ export class Vanguard {
     return false;
   }
 
-  updateCamera(camera, dt, fpView, shake) {
+  updateCamera(camera, dt, fpView, shake, camMode = 'aim') {
     if (fpView) {
       this.root.visible = false;
       this.turretPivot.getWorldPosition(_v);
@@ -248,7 +255,10 @@ export class Vanguard {
       camera.lookAt(_t);
     } else {
       this.root.visible = true;
-      this.camHeading = wrapAngle(this.camHeading + wrapAngle(this.turretYaw - this.camHeading) * damp(dt, 12));
+      // In 'hull' mode the chase camera follows where the tank is driving;
+      // in the default 'aim' mode it follows the turret aim direction.
+      const followYaw = camMode === 'hull' ? this.heading : this.turretYaw;
+      this.camHeading = wrapAngle(this.camHeading + wrapAngle(followYaw - this.camHeading) * damp(dt, 12));
       const fx = Math.sin(this.camHeading), fz = Math.cos(this.camHeading);
       const tx = this.pos.x - fx * 11, ty = this.pos.y + 5.5, tz = this.pos.z - fz * 11;
       if (!this.camReady) {

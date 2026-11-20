@@ -60,7 +60,7 @@ export class Screens {
     if (diff) diff.value = settings.difficulty;
     const af = this.root.querySelector('[data-setting="autoFire"]');
     if (af) af.checked = settings.autoFire;
-    for (const key of ['quality', 'iconSet', 'controlPreset']) {
+    for (const key of ['quality', 'iconSet', 'controlPreset', 'cameraMode']) {
       const el = this.root.querySelector(`[data-setting="${key}"]`);
       if (el) el.value = settings[key];
     }

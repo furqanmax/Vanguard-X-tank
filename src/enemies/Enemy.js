@@ -19,6 +19,7 @@ export class Enemy {
     this.team = 'enemy';
     this.alive = true;
     this.removed = false;
+    this.stationary = !!def.stationary;
     this.radius = def.radius;
     this.height = def.height;
     this.maxHealth = Math.round(def.hp * difficulty.enemyHealth);
@@ -100,6 +101,10 @@ export class Enemy {
           break;
         }
         this.coast(dt);
+        if (this.stationary) {
+          this.idleTimer = 1; // emplacements scan in place, never patrol
+          break;
+        }
         this.idleTimer -= dt;
         if (this.idleTimer <= 0) {
           this.pickPatrol();
@@ -174,6 +179,7 @@ export class Enemy {
   }
 
   coast(dt) {
+    if (this.stationary) return;
     this.speed = approach(this.speed, 0, this.def.accel * dt);
     this.world.move(this.pos, Math.sin(this.heading) * this.speed * dt, Math.cos(this.heading) * this.speed * dt, this.radius);
     this.pos.y = this.world.groundAt(this.pos.x, this.pos.z);
@@ -186,6 +192,7 @@ export class Enemy {
   }
 
   driveTo(tx, tz, speed, dt) {
+    if (this.stationary) return true;
     const dx = tx - this.pos.x, dz = tz - this.pos.z;
     const dist = Math.hypot(dx, dz);
     const desired = Math.atan2(dx, dz);

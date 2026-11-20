@@ -26,7 +26,7 @@ export class Game {
     this.minimap = new Minimap();
     this.settings = {
       sensitivity: 1, invertY: false, difficulty: 'normal', fullscreen: false, aimStyle: 'stick', autoFire: true,
-      quality: isTouchDevice() ? 'medium' : 'high', iconSet: 'flat', controlPreset: 'default',
+      quality: isTouchDevice() ? 'medium' : 'high', iconSet: 'flat', controlPreset: 'default', cameraMode: 'aim',
       ...this.loadSettings(),
     };
     this.hud.setIconSet(this.settings.iconSet);
@@ -149,12 +149,12 @@ export class Game {
       this.screens.syncSettings(this.settings);
       return;
     }
-    if (key !== 'fullscreen') this.saveSettings();
     if (key === 'fullscreen') {
       this.setFullscreen(value);
       return;
     }
     this.settings[key] = value;
+    this.saveSettings();
     if (key === 'aimStyle') this.touch?.applyAimStyle();
     this.screens.syncSettings(this.settings);
   }
@@ -195,6 +195,7 @@ export class Game {
       case 'mp-join': this.mpJoin(); break;
       case 'mp-start': this.net.startMatch(); break;
       case 'mp-leave': this.leaveRoom(); this.screens.show('title'); break;
+      case 'hard-refresh': window.dispatchEvent(new Event('saltreach-hard-refresh')); break;
     }
   }
 

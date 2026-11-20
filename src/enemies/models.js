@@ -57,6 +57,7 @@ const BUILDERS = {
     return turret;
   },
   gantry(g) {
+    part(g, new THREE.BoxGeometry(3.4, 0.5, 3.4), mat(0x6b6f63), 0, 0.25, 0);
     for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
       part(g, new THREE.BoxGeometry(0.3, 2.8, 0.3), mat(0x888d92), x * 1.0, 1.4, z * 1.0);
     }

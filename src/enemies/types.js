@@ -29,9 +29,11 @@ export const ENEMY_TYPES = {
   },
   gantry: {
     name: 'Gantry Launcher', model: 'gantry', hp: 120, radius: 2.2, height: 4.0, size: 1.8,
-    speed: 4, patrolSpeed: 2.5, accel: 3, turnRate: 1.1, turretRate: 1.8,
+    speed: 0, patrolSpeed: 0, accel: 0, turnRate: 0, turretRate: 1.4,
     sight: 100, aggro: 100, range: 90, standoff: 60, cooldown: 4.2, retreatAt: 0,
+    stationary: true, mounted: true,
     score: 450, drop: 0.35, muzzleZ: 1.5, muzzleY: 3.2,
-    weapon: { kind: 'missile', launch: 14, speed: 42, accel: 30, turn: 2.2, damage: 26, splash: 3.5, hitRadius: 1.0, life: 7, color: 0xf2f2f2, size: 0.5 },
+    // turn is a hard limit in radians/second, giving the missile a wide, slow arc.
+    weapon: { kind: 'missile', launch: 16, speed: 42, accel: 26, turn: 0.9, damage: 26, splash: 3.5, hitRadius: 1.0, life: 8, color: 0xf2f2f2, size: 0.5 },
   },
 };

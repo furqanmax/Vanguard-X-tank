@@ -177,6 +177,13 @@
           <label><input type="checkbox" data-setting="autoFire"> Auto-fire when the reticle is on an enemy</label>
         </div>
         <div class="field">
+          <label>Chase camera follows</label>
+          <select data-setting="cameraMode">
+            <option value="aim">Turret aim direction (default)</option>
+            <option value="hull">Tank movement direction</option>
+          </select>
+        </div>
+        <div class="field">
           <label>Aim control (touch)</label>
           <select data-setting="aimStyle">
             <option value="stick">Joystick: push to aim, pull to fire</option>
@@ -218,6 +225,9 @@
             <option value="normal">Normal</option>
             <option value="hard">Hard</option>
           </select>
+        </div>
+        <div class="row-btns">
+          <button data-action="hard-refresh">Hard refresh (clear cached files)</button>
         </div>
         <div class="row-btns"><button data-action="back">Back</button></div>
       </div>

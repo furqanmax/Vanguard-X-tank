@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { approach } from '../game/math.js';
+import { approach, clamp } from '../game/math.js';
 
 export function flightTime(distance, speed) {
   return Math.min(3.2, Math.max(0.6, distance / speed));
@@ -15,6 +15,10 @@ const boltGeo = new THREE.BoxGeometry(1, 1, 1);
 const sphereGeo = new THREE.SphereGeometry(1, 8, 6);
 const missileGeo = new THREE.ConeGeometry(1, 2.4, 6).rotateX(Math.PI / 2);
 const _a = new THREE.Vector3();
+const _heading = new THREE.Vector3();
+const _desired = new THREE.Vector3();
+const _axis = new THREE.Vector3();
+const _turnQ = new THREE.Quaternion();
 
 function makeMesh(shot) {
   const material = new THREE.MeshBasicMaterial({ color: shot.color });
@@ -79,16 +83,37 @@ export class Projectiles {
     }
   }
 
+  // Homing with a limited turn rate: the missile arcs widely toward its target
+  // instead of snapping around in sharp turns. Speed is handled separately so
+  // it never drops while maneuvering, even right next to the target.
   steer(p, dt) {
     const s = p.shot, t = p.target;
-    if (t && t.alive) {
-      _a.copy(t.pos);
-      _a.y += 1.2;
-      _a.sub(p.pos).normalize().multiplyScalar(s.speed);
-      p.vel.lerp(_a, 1 - Math.exp(-s.turn * dt));
-    }
     const sp = p.vel.length();
-    if (sp > 0.001) p.vel.multiplyScalar(approach(sp, s.speed, s.accel * dt) / sp);
+    if (sp < 1e-5) return;
+
+    _heading.copy(p.vel).divideScalar(sp);
+    if (t && t.alive) {
+      _desired.copy(t.pos);
+      _desired.y += 1.2;
+      _desired.sub(p.pos);
+      if (_desired.lengthSq() > 1e-6) {
+        _desired.normalize();
+        const angle = Math.acos(clamp(_heading.dot(_desired), -1, 1));
+        const maxTurn = s.turn * dt; // radians allowed this frame
+        if (angle > 1e-4) {
+          _axis.crossVectors(_heading, _desired);
+          if (_axis.lengthSq() > 1e-10) {
+            _axis.normalize();
+            _turnQ.setFromAxisAngle(_axis, Math.min(maxTurn, angle));
+            _heading.applyQuaternion(_turnQ).normalize();
+          }
+        }
+      }
+    }
+    // Speed ramps up to cruise on launch, then holds steady. Turning never
+    // reduces it, so the missile keeps its speed as it closes on the target.
+    const speed = approach(sp, s.speed, s.accel * dt);
+    p.vel.copy(_heading).multiplyScalar(speed);
   }
 
   findTarget(p) {

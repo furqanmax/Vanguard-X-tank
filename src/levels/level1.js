@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../game/noise.js';
 import { LAND_MIN } from '../game/World.js';
+import { ENEMY_TYPES } from '../enemies/types.js';
 import { Destructible, addStatic, buildPalm, buildRock, buildCrate, buildBarrel, buildHut,
   buildPylon, buildBunker, buildSilo, buildBarrier, buildPad, buildVtol } from './props.js';
 
@@ -34,7 +35,7 @@ const ENEMY_GROUPS = [
   ['raider', 40, 66], ['raider', 78, 44], ['scout', 84, 62],
   ['raider', 116, -40], ['scout', 110, -64],
   ['scout', -120, 70], ['raider', 150, 10], ['bombard', -150, -90], ['scout', 170, -120],
-  ['raider', -180, 120], ['walker', 120, 150], ['gantry', 185, 60],
+  ['raider', -180, 120], ['walker', 120, 150], ['gantry', 115, 60],
 ].map(([t, x, z]) => [t, k(x), k(z)]);
 
 const PICKUPS = [
@@ -57,6 +58,40 @@ function findLand(world, x, z) {
     }
   }
   return { x, z };
+}
+
+// Stationary missile emplacements are mounted on the highest ground nearby so
+// they overlook the approach and fire their missiles from an elevated position.
+function findHighPoint(world, x, z) {
+  let best = { x, z, h: world.groundAt(x, z) };
+  for (let r = 6; r <= 42; r += 6) {
+    for (let a = 0; a < 12; a++) {
+      const px = x + Math.cos((a / 12) * Math.PI * 2) * r;
+      const pz = z + Math.sin((a / 12) * Math.PI * 2) * r;
+      const h = world.groundAt(px, pz);
+      if (h > best.h + 0.25 && world.canOccupy(px, pz, 2.5)) best = { x: px, z: pz, h };
+    }
+  }
+  return best;
+}
+
+// Lift a stationary launcher onto a rocky knoll so it always reads as a
+// high-mounted emplacement, even where the natural terrain is flat.
+const MOUND_RISE = 3.5;
+function mountOnKnoll(session, enemy) {
+  const baseY = enemy.pos.y;
+  const rock = new THREE.MeshStandardMaterial({ color: 0x6a6558, roughness: 1 });
+  const cap = new THREE.MeshStandardMaterial({ color: 0x7c7566, roughness: 1 });
+  const slope = new THREE.Mesh(new THREE.CylinderGeometry(2.7, 4.8, MOUND_RISE, 8), rock);
+  slope.position.y = MOUND_RISE / 2;
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 2.8, 0.4, 8), cap);
+  top.position.y = MOUND_RISE;
+  const knoll = new THREE.Group();
+  knoll.add(slope, top);
+  knoll.position.set(enemy.pos.x, baseY, enemy.pos.z);
+  session.scene.add(knoll);
+  enemy.pos.y = baseY + MOUND_RISE;
+  enemy.group.position.y = enemy.pos.y;
 }
 
 function nearSite(x, z, margin) {
@@ -155,8 +190,17 @@ function populateLevel1(session, opts = {}) {
   refs.silosZone = k(42);
   if (!opts.versus) {
     for (const [type, x, z] of ENEMY_GROUPS) {
-      const p = findLand(world, x, z);
-      session.spawnEnemy(type, p.x, p.z);
+      let p;
+      let mounted = false;
+      if (ENEMY_TYPES[type].mounted) {
+        p = findHighPoint(world, x, z);
+        if (p.h < LAND_MIN + 0.8) p = findLand(world, x, z);
+        mounted = true;
+      } else {
+        p = findLand(world, x, z);
+      }
+      const enemy = session.spawnEnemy(type, p.x, p.z);
+      if (mounted) mountOnKnoll(session, enemy);
     }
   }
   for (const [type, x, z] of PICKUPS) {

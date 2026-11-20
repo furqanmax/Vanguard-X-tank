@@ -234,7 +234,7 @@ export class Session {
       }
     }
 
-    p.updateCamera(this.camera, dt, this.fpView, w.effects.shakeVec);
+    p.updateCamera(this.camera, dt, this.fpView, w.effects.shakeVec, this.settings.cameraMode);
     this.updateHud(dt);
 
     if (!p.alive && !this.versus) {
